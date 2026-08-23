@@ -205,6 +205,7 @@ export default function RealTimeAIInterviewPage() {
       language: selectedLanguage,
       scores: {
         technicalScore: debriefReport.dimensions.technicalAccuracy,
+        keyPointScore: Math.round(debriefReport.dimensions.technicalAccuracy * 0.6),
         reasoningScore: debriefReport.dimensions.troubleshootingReasoning,
         safetyScore: debriefReport.dimensions.safetyCompliance,
         specificityScore: debriefReport.dimensions.specificityDepth,

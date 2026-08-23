@@ -76,10 +76,10 @@ export const LiveInterviewerFeed: React.FC<LiveInterviewerFeedProps> = ({
   const stageLabel = isFollowUpActive ? activeFollowUp.stageName : currentQuestion.stageName;
   const subtitleLabel = isFollowUpActive ? activeFollowUp.stageSubtitle : currentQuestion.stageSubtitle;
 
-  // Speak question when question/follow-up changes or speech triggered
+  // Speak question when question/follow-up changes or speech triggered (using clear English speech synthesis to prevent language mixing errors)
   useEffect(() => {
     if (interviewerStatus === 'speaking' && !isAudioMuted) {
-      speakTextWebSpeech(questionText, language);
+      speakTextWebSpeech(englishText, 'en');
 
       // Simulate audio waveform animation progress
       setSpeechProgress(0);
@@ -132,7 +132,7 @@ export const LiveInterviewerFeed: React.FC<LiveInterviewerFeedProps> = ({
   }, [isCameraActive]);
 
   const handleReplayAudio = () => {
-    speakTextWebSpeech(questionText, language);
+    speakTextWebSpeech(englishText, 'en');
   };
 
   return (

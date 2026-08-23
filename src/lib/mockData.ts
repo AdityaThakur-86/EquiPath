@@ -94,6 +94,7 @@ export const INITIAL_CANDIDATE: Candidate = {
       translatedText: 'I would first check the motor winding resistance and bearing condition, and ensure the cooling fan is not jammed. Also isolate power and check for earth leakage with a multimeter.',
       scores: {
         technicalScore: 88,
+        keyPointScore: 22,
         reasoningScore: 82,
         safetyScore: 91,
         specificityScore: 79,

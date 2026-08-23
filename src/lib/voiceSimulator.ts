@@ -27,26 +27,12 @@ export async function speechToText(
   language: Language = 'pa',
   questionContext?: ScenarioQuestion
 ): Promise<SimulatedSpeechResult> {
-  // If the question has a custom sample transcript for the language, use it
-  if (questionContext?.sampleVoiceTranscript && questionContext.sampleVoiceTranscript[language]) {
-    const transcript = questionContext.sampleVoiceTranscript[language];
-    const translatedEn = questionContext.sampleVoiceTranscript.en || SAMPLE_TRANSCRIPTS.en.translation;
-    return {
-      transcript,
-      durationSeconds: 8,
-      confidence: 0.94,
-      language,
-      translatedEn,
-    };
-  }
-
-  const sample = SAMPLE_TRANSCRIPTS[language] || SAMPLE_TRANSCRIPTS.pa;
   return {
-    transcript: sample.raw,
-    durationSeconds: 8,
-    confidence: 0.94,
+    transcript: '',
+    durationSeconds: 0,
+    confidence: 0,
     language,
-    translatedEn: sample.translation,
+    translatedEn: '',
   };
 }
 
@@ -76,14 +62,157 @@ export function playAudioSimulation(durationSeconds: number = 8, onProgress?: (p
   return () => clearInterval(interval);
 }
 
-export function speakTextWebSpeech(text: string, lang: string = 'en-US'): void {
+export function speakTextWebSpeech(text: string, lang: string = 'en-US', rate: number = 0.95): void {
+  speakTextWithVoiceover({ text, language: (lang.startsWith('pa') ? 'pa' : lang.startsWith('hi') ? 'hi' : 'en'), rate });
+}
+
+export interface SpeakOptions {
+  text: string;
+  language: Language;
+  rate?: number;
+  pitch?: number;
+  onStart?: () => void;
+  onEnd?: () => void;
+  onError?: (err: any) => void;
+}
+
+export function stopVoiceover(): void {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95;
-    if (lang.startsWith('pa')) utterance.lang = 'pa-IN';
-    else if (lang.startsWith('hi')) utterance.lang = 'hi-IN';
-    else utterance.lang = 'en-US';
-    window.speechSynthesis.speak(utterance);
   }
 }
+
+export function speakTextWithVoiceover({
+  text,
+  language,
+  rate = 0.95,
+  pitch = 1.0,
+  onStart,
+  onEnd,
+  onError,
+}: SpeakOptions): () => void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    if (onStart) onStart();
+    const cleanup = playAudioSimulation(6, (pct) => {
+      if (pct >= 100 && onEnd) onEnd();
+    });
+    return cleanup;
+  }
+
+  window.speechSynthesis.cancel();
+  const cleanText = text.replace(/[*_#`~]/g, '').trim();
+  if (!cleanText) return () => {};
+
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  utterance.rate = rate;
+  utterance.pitch = pitch;
+
+  // Language & Voice target matching
+  let targetLangCode = 'en-US';
+  if (language === 'pa') targetLangCode = 'pa-IN';
+  else if (language === 'hi') targetLangCode = 'hi-IN';
+
+  utterance.lang = targetLangCode;
+
+  // Attempt to select specific Indian voice if available
+  const voices = window.speechSynthesis.getVoices();
+  const matchedVoice = voices.find(
+    (v) =>
+      v.lang.toLowerCase().replace('_', '-') === targetLangCode.toLowerCase() ||
+      (language === 'pa' && v.name.toLowerCase().includes('punjabi')) ||
+      (language === 'hi' && v.name.toLowerCase().includes('hindi'))
+  );
+  if (matchedVoice) {
+    utterance.voice = matchedVoice;
+  }
+
+  utterance.onstart = () => {
+    if (onStart) onStart();
+  };
+
+  utterance.onend = () => {
+    if (onEnd) onEnd();
+  };
+
+  utterance.onerror = (e) => {
+    if (onError) onError(e);
+    else if (onEnd) onEnd();
+  };
+
+  window.speechSynthesis.speak(utterance);
+
+  return () => {
+    window.speechSynthesis.cancel();
+  };
+}
+
+export function getQuestionVoiceoverScript(
+  questionText: { en: string; hi: string; pa: string },
+  contextScenario?: string,
+  language: Language = 'pa'
+): string {
+  const mainText = questionText[language] || questionText.en;
+  if (language === 'pa') {
+    return contextScenario
+      ? `ਸਵਾਲ: ${contextScenario}। ${mainText}`
+      : `ਸਵਾਲ: ${mainText}`;
+  }
+  if (language === 'hi') {
+    return contextScenario
+      ? `प्रश्न: ${contextScenario}। ${mainText}`
+      : `प्रश्न: ${mainText}`;
+  }
+  return contextScenario
+    ? `Question Context: ${contextScenario}. ${mainText}`
+    : `Scenario Question: ${mainText}`;
+}
+
+export function getEvaluationVoiceoverScript(
+  overallScore: number,
+  feedback: string,
+  strengths: string[],
+  weaknesses: string[],
+  language: Language = 'pa'
+): string {
+  const isHigh = overallScore >= 80;
+  const isPass = overallScore >= 50;
+
+  if (language === 'pa') {
+    let script = `ਮੁਲਾਂਕਣ ਨਤੀਜਾ: ਤੁਹਾਡਾ ਕੁੱਲ ਸਕੋਰ ${overallScore} ਪ੍ਰਤੀਸ਼ਤ ਹੈ। `;
+    if (isHigh) script += `ਸ਼ਾਨਦਾਰ ਪ੍ਰਦਰਸ਼ਨ! `;
+    else if (isPass) script += `ਚੰਗਾ ਯਤਨ! `;
+    else script += `ਇਸ ਵਿੱਚ ਸੁਧਾਰ ਦੀ ਲੋੜ ਹੈ। `;
+
+    script += `${feedback} `;
+    if (strengths.length > 0) {
+      script += `ਮੁੱਖ ਤਾਕਤਾਂ: ${strengths[0]}। `;
+    }
+    if (weaknesses.length > 0) {
+      script += `ਧਿਆਨ ਦੇਣ ਯੋਗ ਨੁਕਤੇ: ${weaknesses[0]}। `;
+    }
+    return script;
+  }
+
+  if (language === 'hi') {
+    let script = `मूल्यांकन परिणाम: आपका कुल स्कोर ${overallScore} प्रतिशत है। `;
+    if (isHigh) script += `शानदार प्रदर्शन! `;
+    else if (isPass) script += `अच्छा प्रयास! `;
+    else script += `इसमें सुधार की आवश्यकता है। `;
+
+    script += `${feedback} `;
+    if (strengths.length > 0) {
+      script += `मुख्य विशेषताएं: ${strengths[0]}। `;
+    }
+    if (weaknesses.length > 0) {
+      script += `सुधार के बिंदु: ${weaknesses[0]}। `;
+    }
+    return script;
+  }
+
+  let script = `Evaluation Summary: Your earned overall score is ${overallScore} percent. `;
+  script += `${feedback} `;
+  if (strengths.length > 0) script += `Key strength: ${strengths[0]}. `;
+  if (weaknesses.length > 0) script += `Area for improvement: ${weaknesses[0]}. `;
+  return script;
+}
+

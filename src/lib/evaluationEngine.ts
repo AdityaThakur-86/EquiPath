@@ -11,7 +11,8 @@ import {
 
 export interface EvaluateAnswerInput {
   question: ScenarioQuestion;
-  answer: string;
+  answer?: string;
+  answerText?: string;
   language?: Language;
   isVoice?: boolean;
   audioDurationSeconds?: number;
@@ -74,8 +75,8 @@ function isGibberishOrMeaningless(text: string): boolean {
  * Evaluates semantic equivalence across English, Hindi, Punjabi, and Hinglish.
  */
 export function evaluateAnswer(input: EvaluateAnswerInput): EvaluationResult {
-  const { question, answer, language = 'pa', isVoice = false, audioDurationSeconds, transcript, translatedText } = input;
-  const rawText = (transcript || answer || '').trim();
+  const { question, answer, answerText, language = 'pa', isVoice = false, audioDurationSeconds, transcript, translatedText } = input;
+  const rawText = (transcript || answerText || answer || '').trim();
   const lowerText = rawText.toLowerCase();
 
   // 1. EMPTY OR MEANINGLESS / "I DON'T KNOW" CHECK
@@ -315,19 +316,46 @@ export function evaluateAnswer(input: EvaluateAnswerInput): EvaluationResult {
     weaknesses.push('Could explicitly emphasize zero-energy verification (LOTO) before physical contact.');
   }
 
-  // 11. FEEDBACK SYNTHESIS
+  // 11. FEEDBACK SYNTHESIS (MULTILINGUAL PA / HI / EN)
   let feedback = '';
-  if (finalScore >= 85) {
-    feedback = `Excellent answer. You demonstrated thorough practical understanding by covering ${matchedKeyPoints.length} of ${totalKeyPoints} key points with solid safety awareness.`;
-  } else if (finalScore >= 65) {
-    feedback = `Good diagnostic response. You correctly targeted ${matchedKeyPoints.join(' and ')}, but missed investigating ${missingKeyPoints.slice(0, 2).join(' and ')}.`;
-  } else if (finalScore >= 40) {
-    feedback = `Partially correct start (${finalScore}%). You identified ${matchedKeyPoints.length > 0 ? matchedKeyPoints.join(', ') : 'general context'}, but did not address ${missingKeyPoints.slice(0, 2).join(', ')}.`;
-  } else if (incorrectPointsFound.length > 0) {
-    feedback = `Incorrect/Hazardous proposal (${finalScore}%). The suggested action (${incorrectPointsFound.join(', ')}) creates severe equipment damage or electrical shock risks.`;
+  if (language === 'pa') {
+    if (finalScore >= 85) {
+      feedback = `ਸ਼ਾਨਦਾਰ ਉੱਤਰ (${finalScore}%)। ਤੁਸੀਂ ਸੁਰੱਖਿਆ ਨਿਯਮਾਂ ਦੀ ਪਾਲਣਾ ਕਰਦੇ ਹੋਏ ${matchedKeyPoints.length} ਮੁੱਖ ਤਕਨੀਕੀ ਨੁਕਤੇ ਸਹੀ ਦੱਸੇ ਹਨ।`;
+    } else if (finalScore >= 65) {
+      feedback = `ਚੰਗਾ ਤਕਨੀਕੀ ਉੱਤਰ (${finalScore}%)। ਤੁਸੀਂ ${matchedKeyPoints.slice(0, 2).join(' ਅਤੇ ')} ਸਹੀ ਚੈੱਕ ਕੀਤਾ, ਪਰ ${missingKeyPoints.slice(0, 1).join('')} ਵੱਲ ਧਿਆਨ ਨਹੀਂ ਦਿੱਤਾ।`;
+    } else if (finalScore >= 40) {
+      feedback = `ਅੰਸ਼ਕ ਤੌਰ ਤੇ ਸਹੀ ਉੱਤਰ (${finalScore}%)। ਤੁਸੀਂ ਕੁਝ ਨੁਕਤੇ ਦੱਸੇ ਹਨ ਪਰ ${missingKeyPoints.slice(0, 2).join(' ਅਤੇ ')} ਚੈੱਕ ਕਰਨਾ ਜ਼ਰੂਰੀ ਸੀ।`;
+    } else if (incorrectPointsFound.length > 0) {
+      feedback = `ਗਲਤ / ਖ਼ਤਰਨਾਕ ਕਦਮ (${finalScore}%)। ਤੁਹਾਡੇ ਦੁਆਰਾ ਦੱਸਿਆ ਗਿਆ ਤਰੀਕਾ (${incorrectPointsFound.join(', ')}) ਮੋਟਰ ਜਾਂ ਸੁਰੱਖਿਆ ਲਈ ਖਤਰਨਾਕ ਹੈ।`;
+    } else {
+      feedback = `ਕਮਜ਼ੋਰ ਉੱਤਰ (${finalScore}%)। ਇਸ ਵਿੱਚ ਮੁੱਖ ਤਕਨੀਕੀ ਜਾਂਚਾਂ (${missingKeyPoints.slice(0, 2).join(', ')}) ਦੀ ਘਾਟ ਸੀ।`;
+    }
+  } else if (language === 'hi') {
+    if (finalScore >= 85) {
+      feedback = `उत्कृष्ट उत्तर (${finalScore}%)। आपने सुरक्षा मानकों का पालन करते हुए ${matchedKeyPoints.length} मुख्य तकनीकी बिंदु सही बताए।`;
+    } else if (finalScore >= 65) {
+      feedback = `अच्छा तकनीकी उत्तर (${finalScore}%)। आपने ${matchedKeyPoints.slice(0, 2).join(' और ')} सही जांचा, लेकिन ${missingKeyPoints.slice(0, 1).join('')} छूट गया।`;
+    } else if (finalScore >= 40) {
+      feedback = `आंशिक रूप से सही उत्तर (${finalScore}%)। आपने कुछ बिंदु बताए लेकिन ${missingKeyPoints.slice(0, 2).join(' और ')} देखना आवश्यक था।`;
+    } else if (incorrectPointsFound.length > 0) {
+      feedback = `गलत / खतरनाक कदम (${finalScore}%)। आपका सुझाव (${incorrectPointsFound.join(', ')}) दुर्घटना या उपकरण क्षति का जोखिम पैदा करता है।`;
+    } else {
+      feedback = `कमजोर उत्तर (${finalScore}%)। इसमें मुख्य जांच बिंदुओं (${missingKeyPoints.slice(0, 2).join(', ')}) की कमी थी।`;
+    }
   } else {
-    feedback = `Weak answer (${finalScore}%). The response did not identify the required diagnostic steps (${missingKeyPoints.slice(0, 3).join(', ')}).`;
+    if (finalScore >= 85) {
+      feedback = `Excellent answer (${finalScore}%). You demonstrated thorough practical understanding by covering ${matchedKeyPoints.length} of ${totalKeyPoints} key points with solid safety awareness.`;
+    } else if (finalScore >= 65) {
+      feedback = `Good diagnostic response (${finalScore}%). You correctly targeted ${matchedKeyPoints.join(' and ')}, but missed investigating ${missingKeyPoints.slice(0, 2).join(' and ')}.`;
+    } else if (finalScore >= 40) {
+      feedback = `Partially correct start (${finalScore}%). You identified ${matchedKeyPoints.length > 0 ? matchedKeyPoints.join(', ') : 'general context'}, but did not address ${missingKeyPoints.slice(0, 2).join(', ')}.`;
+    } else if (incorrectPointsFound.length > 0) {
+      feedback = `Incorrect/Hazardous proposal (${finalScore}%). The suggested action (${incorrectPointsFound.join(', ')}) creates severe equipment damage or electrical shock risks.`;
+    } else {
+      feedback = `Weak answer (${finalScore}%). The response did not identify the required diagnostic steps (${missingKeyPoints.slice(0, 3).join(', ')}).`;
+    }
   }
+
 
   // 12. RELIABILITY CONFIDENCE
   const assessmentConfidence = rawText.length > 40 ? 92 : 84;
@@ -425,8 +453,8 @@ export function calculateOverallSkillScore(
 
   // Check strict cap conditions
   const emptyCount = results.filter((r) => r.isMeaninglessOrEmpty || r.scores.overallScore === 0).length;
-  const zeroKeyPointsCount = results.filter((r) => r.matchedKeyPoints.length === 0).length;
-  const incorrectCount = results.filter((r) => r.incorrectPointsFound.length > 0).length;
+  const zeroKeyPointsCount = results.filter((r) => (r.matchedKeyPoints || []).length === 0).length;
+  const incorrectCount = results.filter((r) => (r.incorrectPointsFound || []).length > 0).length;
   const hasSafetyFailure = results.some((r) => !r.isCriticalSafetyPassed);
 
   let finalSkillScore = avgOverall;
@@ -471,9 +499,9 @@ export function calculateOverallSkillScore(
   else performanceTier = 'Needs Foundation';
 
   // Aggregate Key Points
-  const allMatchedKeyPoints = Array.from(new Set(results.flatMap((r) => r.matchedKeyPoints)));
-  const allMissingKeyPoints = Array.from(new Set(results.flatMap((r) => r.missingKeyPoints)));
-  const allIncorrectPointsFound = Array.from(new Set(results.flatMap((r) => r.incorrectPointsFound)));
+  const allMatchedKeyPoints = Array.from(new Set(results.flatMap((r) => r.matchedKeyPoints || [])));
+  const allMissingKeyPoints = Array.from(new Set(results.flatMap((r) => r.missingKeyPoints || [])));
+  const allIncorrectPointsFound = Array.from(new Set(results.flatMap((r) => r.incorrectPointsFound || [])));
 
   const allStrengths = Array.from(new Set(results.flatMap((r) => r.strengths))).slice(0, 4);
   const allWeaknesses = Array.from(new Set(results.flatMap((r) => r.weaknesses))).slice(0, 4);

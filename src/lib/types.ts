@@ -129,16 +129,18 @@ export interface EvaluationResult {
   assessmentConfidence: number; // 0 - 100% (confidence in measurement reliability)
   
   // Key point breakdown
-  matchedKeyPoints: string[];
-  missingKeyPoints: string[];
-  incorrectPointsFound: string[];
-  isCriticalSafetyPassed: boolean;
-  isMeaninglessOrEmpty: boolean;
+  matchedKeyPoints?: string[];
+  missingKeyPoints?: string[];
+  incorrectPointsFound?: string[];
+  isCriticalSafetyPassed?: boolean;
+  isMeaninglessOrEmpty?: boolean;
 
   strengths: string[];
   weaknesses: string[];
   feedback: string;
   nextDifficulty: DifficultyLevel;
+  safetyPointsAddressed?: string[];
+  expectedConceptsMet?: string[];
   evaluatedAt: string;
 }
 

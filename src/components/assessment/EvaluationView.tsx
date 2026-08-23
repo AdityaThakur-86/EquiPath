@@ -19,6 +19,9 @@ import {
 } from 'lucide-react';
 import { EvaluationResult } from '@/lib/types';
 import { VoiceAudioPlayer } from '@/components/shared/VoiceAudioPlayer';
+import { VoiceoverPlayer } from '@/components/shared/VoiceoverPlayer';
+import { getEvaluationVoiceoverScript } from '@/lib/voiceSimulator';
+
 
 interface EvaluationViewProps {
   result: EvaluationResult;
@@ -205,7 +208,7 @@ export const EvaluationView: React.FC<EvaluationViewProps> = ({
         </h4>
 
         {/* Demonstrated Key Points */}
-        {result.matchedKeyPoints.length > 0 ? (
+        {(result.matchedKeyPoints && result.matchedKeyPoints.length > 0) ? (
           <div>
             <span className="text-xs font-bold text-emerald-800 block mb-1.5 flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Key Points Demonstrated:
@@ -228,7 +231,7 @@ export const EvaluationView: React.FC<EvaluationViewProps> = ({
         )}
 
         {/* Missing Key Points */}
-        {result.missingKeyPoints.length > 0 && (
+        {(result.missingKeyPoints && result.missingKeyPoints.length > 0) && (
           <div className="pt-2 border-t border-slate-200">
             <span className="text-xs font-bold text-amber-800 block mb-1.5 flex items-center gap-1">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Key Points Missing:
@@ -247,7 +250,7 @@ export const EvaluationView: React.FC<EvaluationViewProps> = ({
         )}
 
         {/* Incorrect Concepts Found */}
-        {result.incorrectPointsFound.length > 0 && (
+        {(result.incorrectPointsFound && result.incorrectPointsFound.length > 0) && (
           <div className="pt-2 border-t border-slate-200">
             <span className="text-xs font-bold text-rose-800 block mb-1.5 flex items-center gap-1">
               <AlertOctagon className="w-3.5 h-3.5 text-rose-600" /> Incorrect / Hazardous Concepts Found:
@@ -295,6 +298,22 @@ export const EvaluationView: React.FC<EvaluationViewProps> = ({
           <span>Diagnostic Feedback</span>
         </div>
         <p>{result.feedback}</p>
+      </div>
+
+      {/* Evaluation Feedback Voiceover Player (Hindi, Punjabi, English) */}
+      <div>
+        <VoiceoverPlayer
+          title="Evaluation Voiceover Summary"
+          subtitle="Listen to your answer evaluation breakdown in Hindi or Punjabi"
+          textToSpeak={getEvaluationVoiceoverScript(
+            result.scores.overallScore,
+            result.feedback,
+            result.strengths,
+            result.weaknesses,
+            result.language
+          )}
+          defaultLanguage={result.language}
+        />
       </div>
 
       {/* Multilingual Fair Evaluation Callout */}

@@ -176,22 +176,6 @@ export const LiveSpeechInput: React.FC<LiveSpeechInputProps> = ({
       } catch {}
       recognitionRef.current = null;
     }
-
-    // If no mic transcript was captured, populate with sample
-    if (!transcript.trim()) {
-      const sample = currentQuestion.sampleAnswers[language] || currentQuestion.sampleAnswers.en;
-      setTranscript(sample);
-      accumulatedTranscriptRef.current = sample;
-    }
-  };
-
-  const handleSelectQuickAnswer = (langKey: Language) => {
-    const sample = currentQuestion.sampleAnswers[langKey] || currentQuestion.sampleAnswers.en;
-    setTranscript(sample);
-    accumulatedTranscriptRef.current = sample;
-    setIsRecording(false);
-    isRecordingRef.current = false;
-    setRecordingSeconds(65); // Simulates a realistic ~1 minute answer
   };
 
   const handleSubmit = () => {
@@ -215,7 +199,7 @@ export const LiveSpeechInput: React.FC<LiveSpeechInputProps> = ({
 
   return (
     <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200/80 shadow-md space-y-4">
-      {/* Top Controls: Timer Settings, Live Stats & Presets */}
+      {/* Top Controls: Timer Settings & Live Stats */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
         {/* Speaking Duration & Countdown */}
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -256,27 +240,8 @@ export const LiveSpeechInput: React.FC<LiveSpeechInputProps> = ({
           )}
         </div>
 
-        {/* Quick Simulated Long-Form Voice Note Presets */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-bold text-slate-400 mr-1">🎙 1–2 Min Voice Sample:</span>
-          <button
-            onClick={() => handleSelectQuickAnswer('pa')}
-            className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-colors shadow-2xs"
-          >
-            ਪੰਜਾਬੀ (Punjabi)
-          </button>
-          <button
-            onClick={() => handleSelectQuickAnswer('hi')}
-            className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 transition-colors shadow-2xs"
-          >
-            हिंदी (Hindi)
-          </button>
-          <button
-            onClick={() => handleSelectQuickAnswer('en')}
-            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition-colors shadow-2xs"
-          >
-            English
-          </button>
+        <div className="text-xs text-slate-500 font-medium">
+          <span>AI Self-Evaluation Active</span>
         </div>
       </div>
 

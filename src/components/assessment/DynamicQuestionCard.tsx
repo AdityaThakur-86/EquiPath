@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { Sparkles, RefreshCw, Globe, ShieldAlert, Cpu, HelpCircle, Layers } from 'lucide-react';
 import { Language, ScenarioQuestion, SUPPORTED_LANGUAGES } from '@/lib/types';
 
+import { VoiceoverPlayer } from '@/components/shared/VoiceoverPlayer';
+import { getQuestionVoiceoverScript } from '@/lib/voiceSimulator';
+
 interface DynamicQuestionCardProps {
   question: ScenarioQuestion;
   selectedLanguage: Language;
@@ -41,6 +44,12 @@ export const DynamicQuestionCard: React.FC<DynamicQuestionCardProps> = ({
       ? question.questionText.en
       : question.questionText[selectedLanguage] || question.questionText.en;
 
+  const voiceoverScript = getQuestionVoiceoverScript(
+    question.questionText,
+    question.contextScenario,
+    'en'
+  );
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden transition-all">
       {/* Top Banner: Dynamic Scenario Meta */}
@@ -64,11 +73,11 @@ export const DynamicQuestionCard: React.FC<DynamicQuestionCardProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={onGenerateNewQuestion}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 hover:border-slate-600 transition-all active:scale-95"
-            title="Randomize scenario topic, difficulty, and type"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold border border-indigo-500 shadow-xs transition-all active:scale-95"
+            title="Generate a completely unique randomized question scenario"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Generate New Question</span>
+            <RefreshCw className="w-3.5 h-3.5 animate-spin-once" />
+            <span>✨ Generate Different Question</span>
           </button>
         </div>
       </div>
@@ -126,6 +135,17 @@ export const DynamicQuestionCard: React.FC<DynamicQuestionCardProps> = ({
             &ldquo;{currentQuestionText}&rdquo;
           </h3>
         </div>
+
+        {/* Question Voiceover Player (Clear English Audio Voiceover, Viewable in Hindi/Punjabi/English) */}
+        <div className="mb-6">
+          <VoiceoverPlayer
+            title="Question Audio Voiceover"
+            subtitle="Listen to clear English voiceover (Question viewable in Punjabi/Hindi)"
+            textToSpeak={voiceoverScript}
+            defaultLanguage="en"
+          />
+        </div>
+
 
         {/* Safety Note Card */}
         <div className="mb-7 p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/80 flex items-start gap-2.5 text-xs text-amber-900">

@@ -585,6 +585,74 @@ export const QUESTION_BLUEPRINTS: QuestionBlueprint[] = [
   },
 ];
 
+// ==========================================
+// DYNAMIC PROCEDURAL SCENARIO RANDOMIZER
+// ==========================================
+
+const INDUSTRIAL_ENVIRONMENTS = [
+  { en: 'in a continuous textile spinning mill', hi: 'टेक्सटाइल स्पिनिंग मिल में', pa: 'ਟੈਕਸਟਾਈਲ ਸਪਿਨਿੰਗ ਮਿੱਲ ਵਿੱਚ' },
+  { en: 'at a food processing & cold storage facility', hi: 'फूड प्रोसेसिंग व कोल्ड स्टोरेज प्लांट में', pa: 'ਫੂਡ ਪ੍ਰੋਸੈਸਿੰਗ ਅਤੇ ਕੋਲਡ ਸਟੋਰੇਜ ਪਲਾਂਟ ਵਿੱਚ' },
+  { en: 'on a agricultural deep-well submersible pump line', hi: 'कृषि सबमर्सिबल पंप लाइन पर', pa: 'ਖੇਤੀਬਾੜੀ ਸਬਮਰਸੀਬਲ ਪੰਪ ਲਾਈਨ ਤੇ' },
+  { en: 'in an auto parts stamping plant', hi: 'ऑटो पार्ट्स स्टैम्पिंग प्लांट में', pa: 'ਆਟੋ ਪਾਰਟਸ ਸਟੈਂਪਿੰਗ ਪਲਾਂਟ ਵਿੱਚ' },
+  { en: 'at a commercial high-rise HVAC plant room', hi: 'कमर्शियल हाई-राइज HVAC प्लांट रूम में', pa: 'ਕਮਰਸ਼ੀਅਲ ਹਾਈ-ਰਾਈਜ਼ HVAC ਪਲਾਂਟ ਰੂਮ ਵਿੱਚ' },
+  { en: 'in a rice sheller rewinding & repair shop', hi: 'राइस शेलर रीवाइंडिंग वर्कशॉप में', pa: 'ਰਾਇਸ ਸ਼ੈਲਰ ਰੀਵਾਈਂਡਿੰਗ ਵਰਕਸ਼ਾਪ ਵਿੱਚ' },
+];
+
+const MOTOR_SIZES = ['7.5 kW', '15 kW', '22 kW', '30 HP', '45 HP', '55 kW'];
+const VOLTAGE_READINGS = ['360V (Low Line)', '380V', '415V (Nominal)', '440V'];
+const RUNTIMES = ['8 minutes', '12 minutes', '18 minutes', '25 minutes', '40 minutes'];
+
+function getRandomItem<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+export function generateProceduralVariation(base: QuestionBlueprint): ScenarioQuestion {
+  const env = getRandomItem(INDUSTRIAL_ENVIRONMENTS);
+  const size = getRandomItem(MOTOR_SIZES);
+  const voltage = getRandomItem(VOLTAGE_READINGS);
+  const runtime = getRandomItem(RUNTIMES);
+  const varId = `${base.id}-var-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  // Construct dynamic localized question text with procedural specs
+  const dynamicContextEn = `${size} motor ${env.en} operating on ${voltage} supply.`;
+  const dynamicContextHi = `${size} मोटर ${env.hi}, ${voltage} सप्लाई पर कार्यरत।`;
+  const dynamicContextPa = `${size} ਮੋਟਰ ${env.pa}, ${voltage} ਸਪਲਾਈ ਤੇ ਚੱਲ ਰਹੀ ਹੈ।`;
+
+  // Inject procedural specs into base question text if relevant
+  let qEn = base.questionText.en;
+  let qHi = base.questionText.hi;
+  let qPa = base.questionText.pa;
+
+  // Append dynamic runtime & context indicator to guarantee 100% unique string
+  qEn = `${qEn} (Operating context: ${size} unit ${env.en}, running for ${runtime}).`;
+  qHi = `${qHi} (संदर्भ: ${size} इकाई ${env.hi}, ${runtime} चलने के बाद)।`;
+  qPa = `${qPa} (ਸੰਦਰਭ: ${size} ਯੂਨਿਟ ${env.pa}, ${runtime} ਚੱਲਣ ਤੋਂ ਬਾਅਦ)।`;
+
+  return {
+    id: varId,
+    skill: base.skill,
+    topic: base.topic,
+    difficulty: base.difficulty,
+    questionType: base.questionType,
+    language: 'pa',
+    questionText: {
+      en: qEn,
+      hi: qHi,
+      pa: qPa,
+    },
+    contextScenario: dynamicContextPa,
+    imageUrl: base.imageUrl,
+    imageAlt: base.imageAlt,
+    imageHotspots: base.imageHotspots,
+    keyPoints: base.keyPoints,
+    criticalPoints: base.criticalPoints,
+    incorrectPoints: base.incorrectPoints,
+    sampleVoiceTranscript: base.sampleVoiceTranscript,
+    sampleWeakVoiceTranscript: base.sampleWeakVoiceTranscript,
+    sampleWrongVoiceTranscript: base.sampleWrongVoiceTranscript,
+  };
+}
+
 // Helper functions for dynamic multi-question generation
 export function getQuestionsForSkill(skillName: string): QuestionBlueprint[] {
   const filtered = QUESTION_BLUEPRINTS.filter(
@@ -606,32 +674,17 @@ export function generateScenarioQuestion(
   const available = allForSkill.filter((q) => !usedQuestionIds.includes(q.id));
   const pool = available.length > 0 ? available : allForSkill;
 
-  // Pick matching or random
-  let selected = pool[0];
+  // Pick matching or random base blueprint
+  let selected = getRandomItem(pool);
   if (difficulty) {
-    const diffMatch = pool.find((q) => q.difficulty === difficulty);
-    if (diffMatch) selected = diffMatch;
+    const diffMatches = pool.filter((q) => q.difficulty === difficulty);
+    if (diffMatches.length > 0) selected = getRandomItem(diffMatches);
   }
 
-  return {
-    id: selected.id,
-    skill: selected.skill,
-    topic: selected.topic,
-    difficulty: selected.difficulty,
-    questionType: selected.questionType,
-    language,
-    questionText: selected.questionText,
-    contextScenario: selected.contextScenario,
-    imageUrl: selected.imageUrl,
-    imageAlt: selected.imageAlt,
-    imageHotspots: selected.imageHotspots,
-    keyPoints: selected.keyPoints,
-    criticalPoints: selected.criticalPoints,
-    incorrectPoints: selected.incorrectPoints,
-    sampleVoiceTranscript: selected.sampleVoiceTranscript,
-    sampleWeakVoiceTranscript: selected.sampleWeakVoiceTranscript,
-    sampleWrongVoiceTranscript: selected.sampleWrongVoiceTranscript,
-  };
+  // Generate dynamic procedural variation so text & parameters are unique every time!
+  const question = generateProceduralVariation(selected);
+  question.language = language;
+  return question;
 }
 
 export function generateFollowUpQuestion(
@@ -643,13 +696,14 @@ export function generateFollowUpQuestion(
 ): ScenarioQuestion {
   // Pick a different question from pool that hasn't been asked
   const allForSkill = getQuestionsForSkill(skillName);
-  const nextQ = allForSkill.find((q) => q.id !== previousQuestion.id) || allForSkill[0];
+  const baseQ = allForSkill.find((q) => q.id !== previousQuestion.id) || getRandomItem(allForSkill);
 
-  return {
-    ...nextQ,
-    difficulty: nextDifficulty,
-    language,
-    questionType: 'Follow-up',
-    id: `followup-${Date.now()}`,
-  };
+  const followUp = generateProceduralVariation(baseQ);
+  followUp.difficulty = nextDifficulty;
+  followUp.language = language;
+  followUp.questionType = 'Follow-up';
+  followUp.id = `followup-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  return followUp;
 }
+
