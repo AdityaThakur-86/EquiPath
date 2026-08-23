@@ -502,9 +502,24 @@ export function getRandomQuestion(
   excludeIds: string[] = [],
   category: QuestionCategory | 'all' = 'all'
 ): DynamicInterviewQuestion {
-  const available = getQuestionsForTradeAndCategory(tradeId, category).filter(
+  const blueprint = TRADE_INTERVIEW_BLUEPRINTS.find((t) => t.tradeId === tradeId) || TRADE_INTERVIEW_BLUEPRINTS[0];
+  
+  // Find categories that have already been used based on excludeIds
+  const usedQuestions = blueprint.questions.filter((q) => excludeIds.includes(q.id));
+  const usedCategories = new Set(usedQuestions.map((q) => q.category));
+
+  let available = getQuestionsForTradeAndCategory(tradeId, category).filter(
     (q) => !excludeIds.includes(q.id)
   );
+
+  // If no specific category is requested, try to pick from an unused category first
+  if (category === 'all' && available.length > 0) {
+    const unusedCategoryQuestions = available.filter((q) => !usedCategories.has(q.category));
+    if (unusedCategoryQuestions.length > 0) {
+      available = unusedCategoryQuestions;
+    }
+  }
+
   if (available.length > 0) {
     const randomIndex = Math.floor(Math.random() * available.length);
     return available[randomIndex];

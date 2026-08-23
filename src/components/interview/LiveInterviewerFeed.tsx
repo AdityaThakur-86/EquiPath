@@ -87,7 +87,6 @@ export const LiveInterviewerFeed: React.FC<LiveInterviewerFeedProps> = ({
         setSpeechProgress((prev) => {
           if (prev >= 100) {
             clearInterval(interval);
-            if (onInterviewerSpeechEnd) onInterviewerSpeechEnd();
             return 100;
           }
           return prev + 4;
@@ -102,6 +101,12 @@ export const LiveInterviewerFeed: React.FC<LiveInterviewerFeedProps> = ({
       };
     }
   }, [currentQuestion.id, activeFollowUp?.id, language, interviewerStatus, isAudioMuted]);
+
+  useEffect(() => {
+    if (speechProgress >= 100 && interviewerStatus === 'speaking') {
+      onInterviewerSpeechEnd?.();
+    }
+  }, [speechProgress, interviewerStatus, onInterviewerSpeechEnd]);
 
   // Attempt real camera stream for candidate video if active
   useEffect(() => {

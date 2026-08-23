@@ -45,7 +45,7 @@ export const InterviewDebriefModal: React.FC<InterviewDebriefModalProps> = ({
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Official Technical Debrief & Certification
+            Skills Assessment Complete
           </h2>
           <p className="text-xs sm:text-sm text-indigo-200 mt-1 max-w-xl">
             Evaluated directly by {report.interviewerName} ({report.interviewerTitle})
@@ -66,10 +66,10 @@ export const InterviewDebriefModal: React.FC<InterviewDebriefModalProps> = ({
                   <Award className="w-3 h-3" /> {report.confidenceBadge}
                 </span>
                 <h3 className="text-xl font-black text-slate-900">
-                  {report.candidateName}
+                  Overall Skill Confidence {report.overallScore}%
                 </h3>
                 <p className="text-xs text-slate-600">
-                  4 Stages Completed • Language: {report.language === 'pa' ? 'ਪੰਜਾਬੀ (Punjabi)' : report.language === 'hi' ? 'हिंदी (Hindi)' : 'English'}
+                  {report.questionsCompleted} Stages Completed • Candidate: {report.candidateName} • Language: {report.language === 'pa' ? 'ਪੰਜਾਬੀ (Punjabi)' : report.language === 'hi' ? 'हिंदी (Hindi)' : 'English'}
                 </p>
               </div>
             </div>
@@ -90,24 +90,24 @@ export const InterviewDebriefModal: React.FC<InterviewDebriefModalProps> = ({
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-center">
-                <span className="text-[11px] font-bold text-slate-500 block mb-1">Technical</span>
-                <span className="text-lg font-black text-indigo-600">{report.dimensions.technicalAccuracy}%</span>
+                <span className="text-[11px] font-bold text-slate-500 block mb-1">Technical Knowledge</span>
+                <span className="text-lg font-black text-indigo-600">{report.dimensions.technicalKnowledge}/100</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-center">
-                <span className="text-[11px] font-bold text-slate-500 block mb-1">Reasoning</span>
-                <span className="text-lg font-black text-cyan-600">{report.dimensions.troubleshootingReasoning}%</span>
+                <span className="text-[11px] font-bold text-slate-500 block mb-1">Problem Solving</span>
+                <span className="text-lg font-black text-cyan-600">{report.dimensions.problemSolving}/100</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-center">
-                <span className="text-[11px] font-bold text-slate-500 block mb-1">Safety/LOTO</span>
-                <span className="text-lg font-black text-emerald-600">{report.dimensions.safetyCompliance}%</span>
+                <span className="text-[11px] font-bold text-slate-500 block mb-1">Practical Reasoning</span>
+                <span className="text-lg font-black text-emerald-600">{report.dimensions.practicalReasoning}/100</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-center">
-                <span className="text-[11px] font-bold text-slate-500 block mb-1">Specificity</span>
-                <span className="text-lg font-black text-violet-600">{report.dimensions.specificityDepth}%</span>
+                <span className="text-[11px] font-bold text-slate-500 block mb-1">Safety Awareness</span>
+                <span className="text-lg font-black text-violet-600">{report.dimensions.safetyAwareness}/100</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-center col-span-2 sm:col-span-1">
-                <span className="text-[11px] font-bold text-slate-500 block mb-1">Decisiveness</span>
-                <span className="text-lg font-black text-amber-600">{report.dimensions.speedDecisiveness}%</span>
+                <span className="text-[11px] font-bold text-slate-500 block mb-1">Photo Challenge</span>
+                <span className="text-lg font-black text-amber-600">{report.dimensions.photoChallenge}</span>
               </div>
             </div>
           </div>
@@ -115,21 +115,21 @@ export const InterviewDebriefModal: React.FC<InterviewDebriefModalProps> = ({
           {/* Executive Summary */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
             <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Executive Evaluator Summary
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Interview Remarks
             </h4>
             <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
               {report.executiveSummary}
             </p>
           </div>
 
-          {/* Strengths & Safety Commendations */}
+          {/* Strengths & Areas to Improve */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
               <h4 className="text-xs font-black text-emerald-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <ThumbsUp className="w-3.5 h-3.5 text-emerald-700" /> Demonstrated Strengths
+                <ThumbsUp className="w-3.5 h-3.5 text-emerald-700" /> STRENGTHS
               </h4>
               <ul className="space-y-1.5 text-xs text-emerald-950 font-medium">
-                {report.strengths.map((str, idx) => (
+                {report.strengths.slice(0, 3).map((str, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-emerald-600 font-bold">•</span>
                     <span>{str}</span>
@@ -138,19 +138,42 @@ export const InterviewDebriefModal: React.FC<InterviewDebriefModalProps> = ({
               </ul>
             </div>
 
-            <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100">
-              <h4 className="text-xs font-black text-indigo-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-indigo-700" /> Safety Commendations
+            <div className="p-4 rounded-2xl bg-orange-50/60 border border-orange-100">
+              <h4 className="text-xs font-black text-orange-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Star className="w-3.5 h-3.5 text-orange-700" /> AREAS TO IMPROVE
               </h4>
-              <ul className="space-y-1.5 text-xs text-indigo-950 font-medium">
-                {report.safetyCommendations.map((saf, idx) => (
+              <ul className="space-y-1.5 text-xs text-orange-950 font-medium">
+                {report.growthOpportunities.slice(0, 3).map((opp, idx) => (
                   <li key={idx} className="flex items-start gap-2">
-                    <span className="text-indigo-600 font-bold">•</span>
-                    <span>{saf}</span>
+                    <span className="text-orange-600 font-bold">•</span>
+                    <span>{opp}</span>
                   </li>
                 ))}
               </ul>
             </div>
+          </div>
+
+          {/* Evidence Summary */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-2">
+              Evidence Summary
+            </h4>
+            <ul className="space-y-2 text-xs text-slate-700 font-medium">
+              {report.questionsAndAnswers?.map((qa, idx) => (
+                <li key={idx} className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900">Question {qa.questionNumber}:</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      qa.isCorrect === 'Correct' ? 'bg-emerald-100 text-emerald-800' :
+                      qa.isCorrect === 'Partially Correct' ? 'bg-amber-100 text-amber-800' :
+                      'bg-rose-100 text-rose-800'
+                    }`}>
+                      {qa.isCorrect}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
 
           {/* Verified Skills Unlocked */}
@@ -173,13 +196,22 @@ export const InterviewDebriefModal: React.FC<InterviewDebriefModalProps> = ({
 
         {/* Modal Footer Actions */}
         <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
-          <button
-            onClick={onRestartInterview}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 transition-colors flex items-center gap-1.5"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Retake Interview</span>
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => window.print()}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 transition-colors flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download/Save Assessment</span>
+            </button>
+            <button
+              onClick={onRestartInterview}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 transition-colors flex items-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Retake</span>
+            </button>
+          </div>
 
           <div className="flex items-center gap-3">
             <button

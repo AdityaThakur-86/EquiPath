@@ -2,6 +2,9 @@ import { Language } from './types';
 import { DynamicInterviewQuestion, TradeInterviewBlueprint } from './interviewQuestionBank';
 
 export interface RealTimeMetrics {
+  questionText: string;
+  answerText: string;
+  isCorrect: 'Correct' | 'Partially Correct' | 'Incorrect';
   technicalAccuracy: number;
   troubleshootingReasoning: number;
   safetyCompliance: number;
@@ -38,11 +41,11 @@ export interface InterviewDebriefReport {
   overallScore: number;
   confidenceBadge: string;
   dimensions: {
-    technicalAccuracy: number;
-    troubleshootingReasoning: number;
-    safetyCompliance: number;
-    specificityDepth: number;
-    speedDecisiveness: number;
+    technicalKnowledge: number;
+    problemSolving: number;
+    practicalReasoning: number;
+    safetyAwareness: number;
+    photoChallenge: number | 'N/A';
   };
   questionsCompleted: number;
   totalDurationSeconds: number;
@@ -53,6 +56,12 @@ export interface InterviewDebriefReport {
   executiveSummary: string;
   verifiedSkillsUnlocked: string[];
   completedAt: string;
+  questionsAndAnswers: {
+    questionNumber: number;
+    questionText: string;
+    answerText: string;
+    isCorrect: 'Correct' | 'Partially Correct' | 'Incorrect';
+  }[];
 }
 
 export function evaluateRealTimeTurn(
@@ -108,27 +117,22 @@ export function evaluateRealTimeTurn(
 
   // Generate dynamic contextual reaction
   let interviewerReaction = '';
-  if (overallTurnScore >= 90) {
-    interviewerReaction = language === 'pa'
-      ? `ਸ਼ਾਨਦਾਰ ਅਤੇ ਡੂੰਘੀ ਵਿਆਖਿਆ (${wordCount} ਸ਼ਬਦ)! ਤੁਹਾਡੇ ਤਕਨੀਕੀ ਤਰਕ ਅਤੇ ਸੁਰੱਖਿਆ ਕਦਮਾਂ ਨੇ ਸਪਸ਼ਟ ਵਿਸ਼ਵਾਸ ਦਿਖਾਇਆ ਹੈ।`
-      : language === 'hi'
-      ? `उत्कृष्ट और विस्तृत उत्तर (${wordCount} शब्द)! आपके व्यावहारिक तर्क और सुरक्षा मानकों ने मजबूत पकड़ दिखाई है।`
-      : `Exceptional, detailed response (${wordCount} words)! High diagnostic accuracy and solid field safety protocol.`;
-  } else if (overallTurnScore >= 75) {
-    interviewerReaction = language === 'pa'
-      ? `ਚੰਗੀ ਕੋਸ਼ਿਸ਼। ਤੁਸੀਂ ਮੁੱਖ ਨੁਕਤੇ ਕਵਰ ਕਰ ਲਏ ਹਨ, ਪਰ ਕੁਝ ਮਾਪ ਹੋਰ ਸਪੱਸ਼ਟ ਹੋ ਸਕਦੇ ਸਨ।`
-      : language === 'hi'
-      ? `अच्छा विश्लेषण। मुख्य बिंदु सही हैं, मीटर रीडिंग और आइसोलेशन पर थोड़ा और विस्तार दे सकते थे।`
-      : `Solid practical approach covering the key trade fundamentals.`;
-  } else {
-    interviewerReaction = language === 'pa'
-      ? `ਸੁਰੱਖਿਆ ਆਈਸੋਲੇਸ਼ਨ ਅਤੇ ਵਿਸ਼ੇਸ਼ ਮੀਟਰ ਰੀਡਿੰਗਾਂ ਵੱਲ ਵਧੇਰੇ ਧਿਆਨ ਦੇਣ ਦੀ ਲੋੜ ਹੈ।`
-      : language === 'hi'
-      ? `सुरक्षा आइसोलेशन और सटीक तकनीकी पैमानों पर विशेष ध्यान देने की आवश्यकता है।`
-      : `Satisfactory, but please ensure zero-energy isolation and ratings are highlighted.`;
-  }
+  let isCorrect: 'Correct' | 'Partially Correct' | 'Incorrect' = 'Incorrect';
+  if (overallTurnScore >= 80) isCorrect = 'Correct';
+  else if (overallTurnScore >= 60) isCorrect = 'Partially Correct';
+
+  interviewerReaction = language === 'pa'
+    ? `ਜਵਾਬ ਦਰਜ ਕੀਤਾ ਗਿਆ। ਅਗਲੇ ਸਵਾਲ ਵੱਲ ਵਧ ਰਹੇ ਹਾਂ।`
+    : language === 'hi'
+    ? `उत्तर दर्ज किया गया। अगले प्रश्न की ओर बढ़ रहे हैं।`
+    : `Response recorded. Evaluating signal and proceeding to next question.`;
+
+  const questionText = (currentQuestion as any).questionText || (currentQuestion.question && currentQuestion.question[language]) || (currentQuestion.question && currentQuestion.question.en) || '';
 
   return {
+    questionText,
+    answerText: text,
+    isCorrect,
     technicalAccuracy,
     troubleshootingReasoning,
     safetyCompliance,
@@ -199,49 +203,76 @@ export function generateInterviewDebrief(
   const avgTech = Math.round(
     completedTurnScores.reduce((acc, t) => acc + t.technicalAccuracy, 0) / Math.max(1, completedTurnScores.length)
   );
-  const avgReasoning = Math.round(
+  const avgProblemSolving = Math.round(
     completedTurnScores.reduce((acc, t) => acc + t.troubleshootingReasoning, 0) / Math.max(1, completedTurnScores.length)
   );
   const avgSafety = Math.round(
     completedTurnScores.reduce((acc, t) => acc + t.safetyCompliance, 0) / Math.max(1, completedTurnScores.length)
   );
-  const avgSpecificity = Math.round(
+  const avgPractical = Math.round(
     completedTurnScores.reduce((acc, t) => acc + t.specificityDepth, 0) / Math.max(1, completedTurnScores.length)
   );
-  const speedDecisiveness = 93;
+  const photoChallenge = 'N/A';
 
   const totalWords = completedTurnScores.reduce((acc, t) => acc + (t.wordCount || 50), 0);
 
   const overallScore = Math.round(
-    avgTech * 0.3 + avgReasoning * 0.25 + avgSafety * 0.25 + avgSpecificity * 0.1 + speedDecisiveness * 0.1
+    avgTech * 0.3 + avgProblemSolving * 0.25 + avgSafety * 0.25 + avgPractical * 0.2
   );
 
   let confidenceBadge = 'Journeyman Verified';
   if (overallScore >= 90) confidenceBadge = 'Master Trade Specialist (Senior Verified)';
   else if (overallScore >= 80) confidenceBadge = 'Advanced Field Technician';
 
-  const strengths = [
-    `Demonstrated outstanding practical mastery of ${tradeBlueprint.tradeName} failure modes across diverse question categories.`,
-    'Strict adherence to Lockout/Tagout (LOTO), zero-energy Live-Dead-Live verification, and NFPA/OSHA PPE standards.',
-    language === 'pa'
-      ? `Articulated complex 1–2 minute technical explanations fluently in native Punjabi (${totalWords} words spoken).`
-      : language === 'hi'
-      ? `Articulated step-by-step diagnostic sequences with rich Hindi technical terminology (${totalWords} words spoken).`
-      : `Communicated standard industrial procedures with high clarity and steady speaking pace (${totalWords} words spoken).`,
-  ];
+  const allDetected = Array.from(new Set(completedTurnScores.flatMap(t => t.detectedKeywords)));
+  const allMissed = Array.from(new Set(completedTurnScores.flatMap(t => t.missedKeywords)));
+
+  const strengths = [];
+  if (allDetected.length > 0) {
+    strengths.push(`Successfully identified key troubleshooting concepts such as: ${allDetected.slice(0, 3).join(', ')}.`);
+  }
+  if (avgSafety >= 80) {
+    strengths.push(`Consistently maintained a high awareness of safety and isolation protocols.`);
+  } else {
+    strengths.push(`Demonstrated practical field knowledge across ${completedTurnScores.length} scenarios.`);
+  }
+  strengths.push(`Communicated technical steps effectively, delivering ${totalWords} words across the session.`);
+
+  const growthOpportunities = [];
+  if (allMissed.length > 0) {
+    growthOpportunities.push(`Could improve precision by verifying: ${allMissed.slice(0, 3).join(', ')}.`);
+  }
+  if (avgProblemSolving < 85) {
+    growthOpportunities.push(`Consider explaining the 'why' behind diagnostic steps more thoroughly.`);
+  }
+  if (avgSafety < 85) {
+    growthOpportunities.push(`Should prioritize mentioning LOTO and zero-energy state verification earlier in responses.`);
+  }
+  while (growthOpportunities.length < 3) {
+    growthOpportunities.push(`Continue gaining hands-on field experience to improve speed and decisiveness.`);
+  }
 
   const safetyCommendations = [
-    'Zero-energy state verification explicitly mandated before physical touch.',
-    'Identified correct instrument safety categories (CAT-III / CAT-IV 1000V).',
-    'Addressed stored energy and life-safety hazards with zero compromise under production pressure.',
+    'Zero-energy state verification.',
+    'Identified correct instrument safety categories.',
+    'Addressed stored energy and life-safety hazards.'
   ];
 
-  const growthOpportunities = [
-    'Can document exact milliohm meter baseline calibration records in written shift logs.',
-    'Continue expanding cross-discipline PLC telemetry diagnostics.',
-  ];
+  let executiveSummary = "";
+  if (overallScore >= 85) {
+    executiveSummary = `The candidate demonstrated strong practical troubleshooting ability and consistently identified the most important initial checks in the given scenarios. Their responses showed excellent technical depth and safety awareness. Communication was clear and highly detailed. Overall, the candidate demonstrates an outstanding level of practical skill for the assessed role.`;
+  } else if (overallScore >= 70) {
+    executiveSummary = `The candidate showed a solid understanding of fundamental troubleshooting steps and practical field reasoning. They correctly addressed safety protocols in most scenarios. Some responses lacked deeper detail when explaining the reasoning behind the selected diagnostic steps. Overall, the candidate demonstrates a promising level of practical skill for the assessed role.`;
+  } else {
+    executiveSummary = `The candidate identified some correct foundational steps but missed several critical diagnostic and safety procedures. Their troubleshooting logic lacked the required depth for complex scenarios. Additional hands-on training and a stronger focus on zero-energy verification protocols are recommended to meet the role's requirements.`;
+  }
 
-  const executiveSummary = `${candidateName} completed an extensive multi-category real-time technical assessment for ${tradeBlueprint.tradeName}, conducted by ${tradeBlueprint.interviewerName} (${tradeBlueprint.interviewerTitle}). Across ${completedTurnScores.length} dynamic questions, the candidate delivered detailed, multi-minute technical explanations (${totalWords} total words spoken) achieving an overall score of ${overallScore}/100 with zero penalty for non-English native speech.`;
+  const questionsAndAnswers = completedTurnScores.map((t, index) => ({
+    questionNumber: index + 1,
+    questionText: t.questionText,
+    answerText: t.answerText,
+    isCorrect: t.isCorrect
+  }));
 
   return {
     sessionId: `session-${Date.now()}`,
@@ -254,11 +285,11 @@ export function generateInterviewDebrief(
     overallScore,
     confidenceBadge,
     dimensions: {
-      technicalAccuracy: avgTech,
-      troubleshootingReasoning: avgReasoning,
-      safetyCompliance: avgSafety,
-      specificityDepth: avgSpecificity,
-      speedDecisiveness,
+      technicalKnowledge: avgTech,
+      problemSolving: avgProblemSolving,
+      practicalReasoning: avgPractical,
+      safetyAwareness: avgSafety,
+      photoChallenge,
     },
     questionsCompleted: completedTurnScores.length,
     totalDurationSeconds: durationSeconds,
@@ -275,5 +306,6 @@ export function generateInterviewDebrief(
       'Power Quality & Harmonic Diagnosis',
     ],
     completedAt: new Date().toISOString(),
+    questionsAndAnswers,
   };
 }

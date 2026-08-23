@@ -66,6 +66,9 @@ export default function RealTimeAIInterviewPage() {
   // Session length (3, 5, 8, or 0 for infinite)
   const [totalSessionQuestions, setTotalSessionQuestions] = useState<number>(5);
 
+  const [interviewPhase, setInterviewPhase] = useState<'intro' | 'active' | 'conclusion'>('intro');
+  const [isClientLoaded, setIsClientLoaded] = useState(false);
+
   // Dynamic question management (tracking used questions to avoid repetition)
   const [usedQuestionIds, setUsedQuestionIds] = useState<string[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<DynamicInterviewQuestion>(
@@ -76,22 +79,70 @@ export default function RealTimeAIInterviewPage() {
   // Real-time metrics and state
   const [turnScores, setTurnScores] = useState<RealTimeMetrics[]>([]);
   const [latestMetrics, setLatestMetrics] = useState<RealTimeMetrics | null>(null);
-  const [interviewerStatus, setInterviewerStatus] = useState<'speaking' | 'listening' | 'analyzing' | 'idle'>('speaking');
+  const [interviewerStatus, setInterviewerStatus] = useState<'speaking' | 'listening' | 'analyzing' | 'idle'>('idle');
 
   // Debrief modal
   const [isDebriefOpen, setIsDebriefOpen] = useState<boolean>(false);
   const [debriefReport, setDebriefReport] = useState<InterviewDebriefReport | null>(null);
 
-  // On mount or trade change, initialize question
-  useEffect(() => {
-    const firstQ = getRandomQuestion(selectedTradeId, [], selectedCategory);
-    setCurrentQuestion(firstQ);
-    setUsedQuestionIds([firstQ.id]);
+  const initNewSession = (tradeId: string, category: QuestionCategory | 'all') => {
+    const nextQ = getRandomQuestion(tradeId, [], category);
+    const introQ = {
+      ...nextQ,
+      question: {
+        ...nextQ.question,
+        en: `Hello, and welcome to your EquiPath skills assessment. I’ll be conducting your interview today. I’ll ask you a series of questions related to the role and your practical experience. Please answer in your own words. Let’s begin. ${nextQ.question.en}`,
+        hi: `नमस्ते, और आपके EquiPath कौशल मूल्यांकन में आपका स्वागत है। मैं आज आपका साक्षात्कार करूँगा। मैं आपसे भूमिका और आपके व्यावहारिक अनुभव से संबंधित कई प्रश्न पूछूँगा। कृपया अपने शब्दों में उत्तर दें। चलिए शुरू करते हैं। ${nextQ.question.hi}`,
+        pa: `ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ, ਅਤੇ ਤੁਹਾਡੇ EquiPath ਹੁਨਰ ਮੁਲਾਂਕਣ ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ। ਮੈਂ ਅੱਜ ਤੁਹਾਡੀ ਇੰਟਰਵਿਊ ਲਵਾਂਗਾ। ਮੈਂ ਤੁਹਾਨੂੰ ਭੂਮਿਕਾ ਅਤੇ ਤੁਹਾਡੇ ਵਿਹਾਰਕ ਅਨੁਭਵ ਨਾਲ ਸਬੰਧਤ ਸਵਾਲ ਪੁੱਛਾਂਗਾ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੇ ਸ਼ਬਦਾਂ ਵਿੱਚ ਜਵਾਬ ਦਿਓ। ਆਓ ਸ਼ੁਰੂ ਕਰੀਏ। ${nextQ.question.pa}`
+      }
+    };
+    setCurrentQuestion(introQ);
+    setUsedQuestionIds([nextQ.id]);
     setActiveFollowUp(null);
     setTurnScores([]);
     setLatestMetrics(null);
     setInterviewerStatus('speaking');
-  }, [selectedTradeId, selectedCategory]);
+    setInterviewPhase('intro');
+  };
+
+  // On mount or trade change, initialize question
+  useEffect(() => {
+    setIsClientLoaded(true);
+    const savedStr = sessionStorage.getItem('equiPathInterviewState');
+    if (savedStr) {
+      try {
+        const saved = JSON.parse(savedStr);
+        if (saved.selectedTradeId === selectedTradeId) {
+          setSelectedCategory(saved.selectedCategory || 'all');
+          setUsedQuestionIds(saved.usedQuestionIds || []);
+          setCurrentQuestion(saved.currentQuestion);
+          setActiveFollowUp(saved.activeFollowUp);
+          setTurnScores(saved.turnScores || []);
+          setLatestMetrics(saved.latestMetrics);
+          setInterviewPhase(saved.interviewPhase || 'active');
+          setInterviewerStatus('idle'); // Wait for candidate action
+          return;
+        }
+      } catch (e) {}
+    }
+    initNewSession(selectedTradeId, selectedCategory);
+  }, [selectedTradeId]);
+
+  // Persist state on change
+  useEffect(() => {
+    if (isClientLoaded && usedQuestionIds.length > 0) {
+      sessionStorage.setItem('equiPathInterviewState', JSON.stringify({
+        selectedTradeId,
+        selectedCategory,
+        usedQuestionIds,
+        currentQuestion,
+        activeFollowUp,
+        turnScores,
+        latestMetrics,
+        interviewPhase
+      }));
+    }
+  }, [selectedTradeId, selectedCategory, usedQuestionIds, currentQuestion, activeFollowUp, turnScores, latestMetrics, interviewPhase, isClientLoaded]);
 
   // Switch to a completely different non-repeating question
   const handleNextQuestion = () => {
@@ -107,9 +158,7 @@ export default function RealTimeAIInterviewPage() {
   const handleSelectTrade = (tradeId: string) => {
     setSelectedTradeId(tradeId);
     setSelectedCategory('all');
-    setUsedQuestionIds([]);
-    setTurnScores([]);
-    setLatestMetrics(null);
+    initNewSession(tradeId, 'all');
     setIsDebriefOpen(false);
     showToast('Trade Changed', `Loaded ${TRADE_INTERVIEW_BLUEPRINTS.find((t) => t.tradeId === tradeId)?.tradeName}`, 'info');
   };
@@ -126,8 +175,40 @@ export default function RealTimeAIInterviewPage() {
     }, 1200);
   };
 
+  const finalizeInterview = (scoresToUse: RealTimeMetrics[], durationSeconds: number) => {
+    const report = generateInterviewDebrief(
+      currentBlueprint,
+      scoresToUse,
+      candidate.name,
+      selectedLanguage,
+      durationSeconds * scoresToUse.length + 180
+    );
+    setDebriefReport(report);
+    setInterviewPhase('conclusion');
+    
+    // Set a mock conclusion question for the AI to speak
+    setCurrentQuestion({
+      ...currentQuestion,
+      question: {
+        en: 'Thank you for completing the EquiPath skills assessment. Your evaluation is now complete.',
+        hi: 'EquiPath कौशल मूल्यांकन पूरा करने के लिए धन्यवाद। आपका मूल्यांकन अब पूरा हो गया है।',
+        pa: 'EquiPath ਹੁਨਰ ਮੁਲਾਂਕਣ ਪੂਰਾ ਕਰਨ ਲਈ ਤੁਹਾਡਾ ਧੰਨਵਾਦ। ਤੁਹਾਡਾ ਮੁਲਾਂਕਣ ਹੁਣ ਪੂਰਾ ਹੋ ਗਿਆ ਹੈ।'
+      }
+    });
+    setInterviewerStatus('speaking');
+    
+    showToast(
+      'Interview Certified!',
+      `Achieved ${report.overallScore}/100 in ${currentBlueprint.tradeName}`,
+      'success'
+    );
+  };
+
   // Submit answer
   const handleSubmitAnswer = (answerText: string, isVoice: boolean, durationSeconds: number) => {
+    if (interviewPhase === 'intro') {
+       setInterviewPhase('active');
+    }
     setInterviewerStatus('analyzing');
 
     setTimeout(() => {
@@ -146,21 +227,7 @@ export default function RealTimeAIInterviewPage() {
       const isFinished = totalSessionQuestions > 0 && updatedScores.length >= totalSessionQuestions;
 
       if (isFinished) {
-        const report = generateInterviewDebrief(
-          currentBlueprint,
-          updatedScores,
-          candidate.name,
-          selectedLanguage,
-          durationSeconds * updatedScores.length + 180
-        );
-        setDebriefReport(report);
-        setInterviewerStatus('idle');
-        setIsDebriefOpen(true);
-        showToast(
-          'Interview Certified!',
-          `Achieved ${report.overallScore}/100 in ${currentBlueprint.tradeName}`,
-          'success'
-        );
+        finalizeInterview(updatedScores, durationSeconds);
       } else {
         // Load next dynamic question
         const nextQ = getRandomQuestion(selectedTradeId, usedQuestionIds, selectedCategory);
@@ -179,15 +246,19 @@ export default function RealTimeAIInterviewPage() {
 
   // Reset interview
   const handleRestartInterview = () => {
-    const firstQ = getRandomQuestion(selectedTradeId, [], selectedCategory);
-    setCurrentQuestion(firstQ);
-    setUsedQuestionIds([firstQ.id]);
-    setActiveFollowUp(null);
-    setTurnScores([]);
-    setLatestMetrics(null);
-    setInterviewerStatus('speaking');
+    initNewSession(selectedTradeId, selectedCategory);
     setIsDebriefOpen(false);
     showToast('Interview Reset', 'Fresh randomized session started.', 'info');
+  };
+
+  const handleEndInterviewEarly = () => {
+    if (window.confirm("Are you sure you want to end the interview early? Your current progress will be evaluated as is.")) {
+      if (turnScores.length > 0) {
+        finalizeInterview(turnScores, 60);
+      } else {
+        handleRestartInterview(); // Nothing to evaluate, just reset
+      }
+    }
   };
 
   // Save to Profile
@@ -198,17 +269,17 @@ export default function RealTimeAIInterviewPage() {
       id: debriefReport.sessionId,
       questionId: `interview-${currentBlueprint.tradeId}`,
       questionText: `Multi-Category Live Trade Interview: ${currentBlueprint.tradeName}`,
-      answerText: `Completed ${debriefReport.questionsCompleted} dynamic questions with ${debriefReport.dimensions.safetyCompliance}% safety compliance. Total words spoken: ${debriefReport.totalWordsSpoken}.`,
+      answerText: `Completed ${debriefReport.questionsCompleted} dynamic questions with ${debriefReport.dimensions.safetyAwareness}% safety awareness. Total words spoken: ${debriefReport.totalWordsSpoken}.`,
       isVoice: true,
       audioDurationSeconds: debriefReport.totalDurationSeconds,
       transcript: debriefReport.executiveSummary,
       language: selectedLanguage,
       scores: {
-        technicalScore: debriefReport.dimensions.technicalAccuracy,
-        keyPointScore: Math.round(debriefReport.dimensions.technicalAccuracy * 0.6),
-        reasoningScore: debriefReport.dimensions.troubleshootingReasoning,
-        safetyScore: debriefReport.dimensions.safetyCompliance,
-        specificityScore: debriefReport.dimensions.specificityDepth,
+        technicalScore: debriefReport.dimensions.technicalKnowledge,
+        keyPointScore: Math.round(debriefReport.dimensions.technicalKnowledge * 0.6),
+        reasoningScore: debriefReport.dimensions.problemSolving,
+        safetyScore: debriefReport.dimensions.safetyAwareness,
+        specificityScore: debriefReport.dimensions.practicalReasoning,
         overallScore: debriefReport.overallScore,
       },
       assessmentConfidence: debriefReport.overallScore,
@@ -296,13 +367,22 @@ export default function RealTimeAIInterviewPage() {
               ))}
             </div>
 
-            <button
-              onClick={handleRestartInterview}
-              className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold shadow-2xs transition-colors flex items-center gap-1.5"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleEndInterviewEarly}
+                className="px-3.5 py-2 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold shadow-2xs transition-colors"
+              >
+                End Early
+              </button>
+
+              <button
+                onClick={handleRestartInterview}
+                className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold shadow-2xs transition-colors flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -365,7 +445,15 @@ export default function RealTimeAIInterviewPage() {
               activeFollowUp={activeFollowUp}
               language={selectedLanguage}
               interviewerStatus={interviewerStatus}
-              onInterviewerSpeechEnd={() => setInterviewerStatus('listening')}
+              onInterviewerSpeechEnd={() => {
+                if (interviewPhase === 'conclusion') {
+                  setInterviewerStatus('idle');
+                  setIsDebriefOpen(true);
+                  sessionStorage.removeItem('equiPathInterviewState');
+                } else {
+                  setInterviewerStatus('listening');
+                }
+              }}
               onNextQuestion={handleNextQuestion}
               questionNumber={turnScores.length + 1}
               totalQuestions={totalSessionQuestions}
